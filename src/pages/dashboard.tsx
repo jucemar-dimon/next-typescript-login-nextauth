@@ -1,6 +1,10 @@
+import { destroyCookie } from "nookies";
 import { useContext, useEffect } from "react";
 import { AuthContext } from "../contexts/AuthContext";
-import { api } from "../services/api";
+import { setupApiClient } from "../services/api";
+import { api } from "../services/apiClient";
+import { AuthTokenError } from "../services/errors/AuthTokenError.1";
+import { withSSRAuth } from "../utils/WithSSRAuth";
 
 export default function Dashboard() {
   const { user } = useContext(AuthContext);
@@ -17,3 +21,28 @@ export default function Dashboard() {
     </div>
   );
 }
+
+export const getServerSideProps = withSSRAuth(async (ctx) => {
+  const apiClient = setupApiClient(ctx);
+  try {
+    const response = await apiClient.get("/me");
+  } catch (err) {
+    destroyCookie(ctx, "next-typescript-login-nextauth.token");
+    destroyCookie(ctx, "next-typescript-login-nextauth.refresToken");
+    console.log(
+      "API ROTA /me na página dashboard",
+      err instanceof AuthTokenError
+    );
+    return {
+      redirect: {
+        destination: "/",
+        permanent: false,
+      },
+    };
+  }
+  // console.log(response.data);
+
+  return {
+    props: {},
+  };
+});
